@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src\BlobStandard.Abstractions\BlobStandard.Abstractions.csproj" />
+    <Project Path="src\BlobStandard\BlobStandard.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\BlobStandard.Tests\BlobStandard.Tests.csproj" />
+  </Folder>
+</Solution>
