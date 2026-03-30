@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     branches:
-      - main
+      - mainstream
   release:
     types: [published]
   workflow_dispatch:
@@ -21,6 +21,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
       - name: Add nightly pack options
         if: github.event_name != 'release'
         id: pack-options-nightly
@@ -37,10 +39,12 @@ jobs:
     environment: ${{ github.event_name == 'release' && 'release' || 'nightly' }}
     permissions:
       id-token: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
       - name: Obtain NuGet API token
         uses: nuget/login@v1
         id: nuget-login
