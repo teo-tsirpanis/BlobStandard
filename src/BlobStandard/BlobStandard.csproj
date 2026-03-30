@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageDescription>Contains common utilities for BlobStandard backends, as well as the local filesystem backend.</PackageDescription>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\BlobStandard.Abstractions\BlobStandard.Abstractions.csproj" />
