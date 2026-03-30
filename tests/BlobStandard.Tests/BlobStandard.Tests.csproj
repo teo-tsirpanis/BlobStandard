@@ -8,7 +8,6 @@
     <EnableNUnitRunner>true</EnableNUnitRunner>
     <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
     <OutputType>Exe</OutputType>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NUnit" Version="4.5.1" />
