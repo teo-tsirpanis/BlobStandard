@@ -52,7 +52,7 @@ High-performance storage abstraction layer; the .NET equivalent of Rust's [`obje
 > This subjective comparison was based on a brief review of each library, and may not be entirely accurate. Please open an issue or submit a PR if you think any of the information is incorrect.
 
 * [FileParty](https://github.com/JankwareDotCom/FileParty)
-  * More high-level than BlobStandard, and does not use `System.IO.Pipelines`. Looks fine otherwise, if it suits your needs.
+  * More high-level than BlobStandard, does not use `System.IO.Pipelines`, does not support byte-range fetching.
 * [FluentStorage](https://github.com/robinrodricks/FluentStorage)
   * More high-level than BlobStandard, supports more than object storage, does not use `System.IO.Pipelines`, and some of its features are [prone to race conditions](https://github.com/robinrodricks/FluentStorage/blob/4e077189e27086f64798eef2a03ddce942569cc5/FluentStorage.AWS/Blobs/Converter.cs#L39-L46).
 * [Stowage](https://github.com/aloneguid/stowage)
