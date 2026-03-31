@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageDescription>Contains abstractions for data access to file and object storage.</PackageDescription>
+    <RootNamespace>BlobStandard</RootNamespace>
   </PropertyGroup>
 </Project>
