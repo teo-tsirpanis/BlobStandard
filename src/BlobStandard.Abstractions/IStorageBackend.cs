@@ -12,21 +12,6 @@ namespace BlobStandard;
 public interface IStorageBackend
 {
     /// <summary>
-    /// Asynchronously enumerates all buckets in the storage backend.
-    /// </summary>
-    /// <param name="cancellationToken">Used to cancel the operation.</param>
-    /// <returns>An async sequence of <see cref="BucketDetails"/> objects.</returns>
-    IAsyncEnumerable<BucketDetails> ListBucketsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Deletes a bucket from the storage backend.
-    /// </summary>
-    /// <param name="bucketName">The name of the bucket to delete.</param>
-    /// <param name="cancellationToken">Used to cancel the operation.</param>
-    /// <returns><see langword="true"/> if the bucket was deleted; <see langword="false"/> if it did not exist.</returns>
-    Task<bool> DeleteBucketAsync(string bucketName, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Creates a <see cref="DownloadBlobOptions"/> instance for use with <see cref="DownloadBlobAsync"/>.
     /// </summary>
     /// <remarks>

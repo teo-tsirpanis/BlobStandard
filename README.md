@@ -23,10 +23,6 @@ High-performance storage abstraction layer; the .NET equivalent of Rust's [`obje
 
 ## Supported operations
 
-* List buckets
-* Delete bucket
-* ~~Create bucket~~ Will not be supported, due to the amount of backend-specific configuration required to create a bucket.
-
 * Download blob
   * Supports byte-range fetching
 * Upload blob sequentially
