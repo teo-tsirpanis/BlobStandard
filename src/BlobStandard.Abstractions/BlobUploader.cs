@@ -29,4 +29,6 @@ public abstract class BlobUploader
     {
         Writer = writer;
     }
+
+    // TODO: Add Cancel method.
 }
