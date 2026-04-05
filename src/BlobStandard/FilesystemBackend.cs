@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 using System.IO.Pipelines;
-using System.Runtime.CompilerServices;
 using BlobStandard.Models;
 using BlobStandard.Utilities;
 using Microsoft.Win32.SafeHandles;
@@ -16,7 +15,7 @@ namespace BlobStandard;
 /// The <c>bucketName</c> parameter of all methods must be an empty string.
 /// Blob names are full filesystem paths.
 /// </remarks>
-public class FilesystemBackend : IStorageBackend
+public partial class FilesystemBackend : IStorageBackend
 {
     private static void ValidateBucket(string bucketName)
     {
@@ -102,66 +101,22 @@ public class FilesystemBackend : IStorageBackend
         }
     }
 
-    // TODO: Use System.IO.Enumeration.
-    // TODO: If prefix is empty, list all drives on Windows, or "/" otherwise.
-
     /// <inheritdoc/>
-    public async IAsyncEnumerable<ListItemBlob> ListBlobsAsync(string bucketName, string prefix, ListBlobsOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<ListItemBlob> ListBlobsAsync(string bucketName, string prefix, ListBlobsOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        bool prefixIsDirectory = prefix.Length > 0
-            && (prefix[^1] == Path.DirectorySeparatorChar || prefix[^1] == Path.AltDirectorySeparatorChar);
-        string enumerationRoot = prefixIsDirectory
-            ? prefix
-            : Path.GetDirectoryName(prefix) ?? prefix;
-
-        if (!Directory.Exists(enumerationRoot))
-            yield break;
-
-        foreach (string filePath in Directory.EnumerateFiles(enumerationRoot, "*", SearchOption.AllDirectories))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (filePath.StartsWith(prefix, StringComparison.Ordinal))
-            {
-                var fi = new FileInfo(filePath);
-                yield return new ListItemBlob
-                {
-                    Name = filePath,
-                    Size = fi.Length,
-                    LastModified = fi.LastWriteTimeUtc,
-                };
-            }
-        }
+        return ListBlobsInternal(prefix, recurse: true).Cast<ListItemBlob>();
     }
 
     /// <inheritdoc/>
-    public async IAsyncEnumerable<ListItemBase> ListBlobsByHierarchyAsync(string bucketName, string prefix, ListBlobsOptions? options = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<ListItemBase> ListBlobsByHierarchyAsync(string bucketName, string prefix, ListBlobsOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        string directory = prefix.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!Directory.Exists(directory))
-            yield break;
-
-        foreach (string entry in Directory.EnumerateFileSystemEntries(directory))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (Directory.Exists(entry))
-            {
-                yield return new ListItemPrefix { Name = entry + Path.DirectorySeparatorChar };
-            }
-            else
-            {
-                var fi = new FileInfo(entry);
-                yield return new ListItemBlob
-                {
-                    Name = entry,
-                    Size = fi.Length,
-                    LastModified = fi.LastWriteTimeUtc,
-                };
-            }
-        }
+        return ListBlobsInternal(prefix, recurse: false);
     }
 
     /// <inheritdoc/>
