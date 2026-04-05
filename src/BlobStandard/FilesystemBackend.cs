@@ -24,6 +24,20 @@ public partial class FilesystemBackend : IStorageBackend
             throw new ArgumentException("The filesystem backend does not support buckets. The bucket name must be an empty string.", nameof(bucketName));
     }
 
+    private static void ValidateBlobName(string blobName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(blobName);
+        // TODO: Prohibit names that end with the reserved temporary blob suffix.
+        // We might need to put this check in a more provider-agnostic place.
+    }
+
+    private static void ValidatePrefix(string prefix)
+    {
+        ArgumentNullException.ThrowIfNull(prefix);
+        if (prefix.Length != 0 && !Path.EndsInDirectorySeparator(prefix))
+            throw new ArgumentException($"The filesystem backend requires the prefix to end with '{Path.DirectorySeparatorChar}' or be empty.", nameof(prefix));
+    }
+
     private static BlobDetails GetBlobDetailsInternal(SafeFileHandle fileHandle)
     {
         return new BlobDetails
@@ -37,6 +51,13 @@ public partial class FilesystemBackend : IStorageBackend
     public Task<BlobDownloadResponse> DownloadBlobAsync(string bucketName, string blobName, DownloadBlobOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        ValidateBlobName(blobName);
+        long rangeStart = options?.RangeStart ?? 0;
+        ArgumentOutOfRangeException.ThrowIfNegative(rangeStart, nameof(options.RangeStart));
+        if (options?.RangeCount is { } rc)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(rc, nameof(options.RangeCount));
+        }
         cancellationToken.ThrowIfCancellationRequested();
 
         var fs = new FileStream(blobName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 1, FileOptions.Asynchronous);
@@ -44,7 +65,7 @@ public partial class FilesystemBackend : IStorageBackend
         {
             var details = GetBlobDetailsInternal(fs.SafeFileHandle);
 
-            if (options?.RangeStart is { } rangeStart && rangeStart is not 0)
+            if (rangeStart is not 0)
             {
                 fs.Seek(rangeStart, SeekOrigin.Begin);
             }
@@ -71,6 +92,7 @@ public partial class FilesystemBackend : IStorageBackend
     public async Task<BlobDetails?> GetBlobDetailsAsync(string bucketName, string blobName, GetBlobDetailsOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        ValidateBlobName(blobName);
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -88,6 +110,7 @@ public partial class FilesystemBackend : IStorageBackend
     public async Task<bool> DeleteBlobAsync(string bucketName, string blobName, DeleteBlobOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        ValidateBlobName(blobName);
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -105,6 +128,7 @@ public partial class FilesystemBackend : IStorageBackend
     public IAsyncEnumerable<ListItemBlob> ListBlobsAsync(string bucketName, string prefix, ListBlobsOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        ValidatePrefix(prefix);
         cancellationToken.ThrowIfCancellationRequested();
 
         return ListBlobsInternal(prefix, recurse: true).Cast<ListItemBlob>();
@@ -114,6 +138,7 @@ public partial class FilesystemBackend : IStorageBackend
     public IAsyncEnumerable<ListItemBase> ListBlobsByHierarchyAsync(string bucketName, string prefix, ListBlobsOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        ValidatePrefix(prefix);
         cancellationToken.ThrowIfCancellationRequested();
 
         return ListBlobsInternal(prefix, recurse: false);
@@ -123,6 +148,7 @@ public partial class FilesystemBackend : IStorageBackend
     public async Task<BlobUploader> StartUploadBlobAsync(string bucketName, string blobName, UploadBlobOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);
+        ValidateBlobName(blobName);
         cancellationToken.ThrowIfCancellationRequested();
 
         string? directory = Path.GetDirectoryName(blobName);
