@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageDescription>Contains common utilities for BlobStandard backends, as well as the local filesystem backend.</PackageDescription>
+    <PackageDescription>Contains common utilities for BlobStandard backends, as well as the local file system backend.</PackageDescription>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\BlobStandard.Abstractions\BlobStandard.Abstractions.csproj" />

@@ -9,19 +9,19 @@ using Microsoft.Win32.SafeHandles;
 namespace BlobStandard;
 
 /// <summary>
-/// Provides an <see cref="IStorageBackend"/> implementation backed by the local filesystem.
+/// Provides an <see cref="IStorageBackend"/> implementation backed by the local file system.
 /// </summary>
 /// <remarks>
 /// The <c>bucketName</c> parameter of all methods must be an empty string.
-/// Blob names are full filesystem paths.
+/// Blob names are full file system paths.
 /// </remarks>
-public partial class FilesystemBackend : IStorageBackend
+public partial class FileSystemBackend : IStorageBackend
 {
     private static void ValidateBucket(string bucketName)
     {
         ArgumentNullException.ThrowIfNull(bucketName);
         if (bucketName.Length != 0)
-            throw new ArgumentException("The filesystem backend does not support buckets. The bucket name must be an empty string.", nameof(bucketName));
+            throw new ArgumentException("The file system backend does not support buckets. The bucket name must be an empty string.", nameof(bucketName));
     }
 
     private static void ValidateBlobName(string blobName)
@@ -35,7 +35,7 @@ public partial class FilesystemBackend : IStorageBackend
     {
         ArgumentNullException.ThrowIfNull(prefix);
         if (prefix.Length != 0 && !Path.EndsInDirectorySeparator(prefix))
-            throw new ArgumentException($"The filesystem backend requires the prefix to end with '{Path.DirectorySeparatorChar}' or be empty.", nameof(prefix));
+            throw new ArgumentException($"The file system backend requires the prefix to end with '{Path.DirectorySeparatorChar}' or be empty.", nameof(prefix));
     }
 
     private static BlobDetails GetBlobDetailsInternal(SafeFileHandle fileHandle)
@@ -155,20 +155,20 @@ public partial class FilesystemBackend : IStorageBackend
         if (directory is { Length: > 0 })
             Directory.CreateDirectory(directory);
 
-        return FilesystemBlobUploader.Create(blobName, options);
+        return FileSystemBlobUploader.Create(blobName, options);
     }
 
-    private sealed class FilesystemBlobUploader : BlobUploader
+    private sealed class FileSystemBlobUploader : BlobUploader
     {
-        private FilesystemBlobUploader(PipeWriter writer) : base(writer) { }
+        private FileSystemBlobUploader(PipeWriter writer) : base(writer) { }
 
-        public static FilesystemBlobUploader Create(string blobName, UploadBlobOptions? options)
+        public static FileSystemBlobUploader Create(string blobName, UploadBlobOptions? options)
         {
             var pipe = new Pipe();
             _ = options?.AllowPartialReads ?? false
                 ? WriteDirectAsync(pipe.Reader, blobName, options)
                 : WriteAtomicAsync(pipe.Reader, blobName, options);
-            return new FilesystemBlobUploader(pipe.Writer);
+            return new FileSystemBlobUploader(pipe.Writer);
         }
 
         private static void DeleteTemporaryFile(string tempPath)

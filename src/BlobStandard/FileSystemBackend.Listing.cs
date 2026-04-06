@@ -8,7 +8,7 @@ using BlobStandard.Utilities;
 
 namespace BlobStandard;
 
-public partial class FilesystemBackend
+public partial class FileSystemBackend
 {
     private const int ListBufferSize = 16;
 
@@ -82,7 +82,7 @@ public partial class FilesystemBackend
 
     private static async Task EnumerateDirectoryAsync(string directory, bool recurse, ChannelWriter<ListItemBase> writer, StopSignal stop, CancellationToken cancellationToken)
     {
-        FilesystemBlobEnumerator enumerator;
+        FileSystemBlobEnumerator enumerator;
         try
         {
             enumerator = new(directory, recurse);
@@ -106,7 +106,7 @@ public partial class FilesystemBackend
         }
     }
 
-    private sealed class FilesystemBlobEnumerator(string directory, bool recurse)
+    private sealed class FileSystemBlobEnumerator(string directory, bool recurse)
         : FileSystemEnumerator<ListItemBase>(directory, recurse ? DefaultOptionsRecurse : DefaultOptions)
     {
         private static readonly EnumerationOptions DefaultOptions = new();
