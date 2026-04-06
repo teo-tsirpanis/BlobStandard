@@ -35,11 +35,31 @@ public partial class FileSystemBackend
             {
                 if (directory.Length == 0)
                 {
-                    await EnumerateRootAsync(recurse, writer, stop, cancellationToken);
+                    // List all files in the file system root, if the user has specified an empty prefix.
+                    // On Windows, this will list the current directory's drive.
+                    directory = "/";
                 }
-                else
+                FileSystemBlobEnumerator enumerator;
+                try
                 {
-                    await EnumerateDirectoryAsync(directory, recurse, writer, stop, cancellationToken);
+                    enumerator = new(directory, recurse);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    // Return an empty list if the directory does not exist, for compatibility with object storage listing.
+                    return;
+                }
+                try
+                {
+                    while (enumerator.MoveNext() && !stop.ShouldStop)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await writer.WriteAsync(enumerator.Current, cancellationToken);
+                    }
+                }
+                finally
+                {
+                    enumerator.Dispose();
                 }
                 writer.Complete();
             }
@@ -47,62 +67,6 @@ public partial class FileSystemBackend
             {
                 writer.Complete(e);
             }
-        }
-    }
-
-    private static async Task EnumerateRootAsync(bool recurse, ChannelWriter<ListItemBase> writer, StopSignal stop, CancellationToken cancellationToken = default)
-    {
-        // Windows does not have a single filesystem root, so enumerate all (ready) drives.
-        if (OperatingSystem.IsWindows())
-        {
-            foreach (var drive in DriveInfo.GetDrives())
-            {
-                if (stop.ShouldStop)
-                {
-                    break;
-                }
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!drive.IsReady)
-                {
-                    continue;
-                }
-                if (recurse)
-                {
-                    await EnumerateDirectoryAsync(drive.Name, true, writer, stop, cancellationToken);
-                }
-                else
-                {
-                    await writer.WriteAsync(new ListItemPrefix { Name = drive.Name }, cancellationToken);
-                }
-            }
-            return;
-        }
-        await EnumerateDirectoryAsync("/", recurse, writer, stop, cancellationToken);
-    }
-
-    private static async Task EnumerateDirectoryAsync(string directory, bool recurse, ChannelWriter<ListItemBase> writer, StopSignal stop, CancellationToken cancellationToken)
-    {
-        FileSystemBlobEnumerator enumerator;
-        try
-        {
-            enumerator = new(directory, recurse);
-        }
-        catch (DirectoryNotFoundException)
-        {
-            // Return an empty list if the directory does not exist, for compatibility with object storage listing.
-            return;
-        }
-        try
-        {
-            while (enumerator.MoveNext() && !stop.ShouldStop)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await writer.WriteAsync(enumerator.Current, cancellationToken);
-            }
-        }
-        finally
-        {
-            enumerator.Dispose();
         }
     }
 
