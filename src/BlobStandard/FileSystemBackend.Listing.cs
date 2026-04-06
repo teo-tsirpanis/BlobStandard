@@ -70,6 +70,19 @@ public partial class FileSystemBackend
         }
     }
 
+    private static char GetLastDirectorySeparator(string path)
+    {
+        int lastDirectorySeparatorIndex = path.AsSpan().LastIndexOfAny('/', '\\');
+        if (lastDirectorySeparatorIndex == -1)
+        {
+            return '/';
+        }
+        else
+        {
+            return path[lastDirectorySeparatorIndex];
+        }
+    }
+
     private sealed class FileSystemBlobEnumerator(string directory, bool recurse)
         : FileSystemEnumerator<ListItemBase>(directory, recurse ? DefaultOptionsRecurse : DefaultOptions)
     {
@@ -81,10 +94,14 @@ public partial class FileSystemBackend
         {
             if (entry.IsDirectory)
             {
+                string path = entry.ToSpecifiedFullPath();
                 return new ListItemPrefix
                 {
                     // Include a trailing separator, for compatibility with object storage listing.
-                    Name = entry.ToSpecifiedFullPath() + Path.DirectorySeparatorChar,
+                    // Append the most recent directory separator used in the path, to reduce platform
+                    // differences in the output. .NET does not add a trailing directory separator on
+                    // directories, so there is not a precedent to guide us here.
+                    Name = $"{path}{GetLastDirectorySeparator(path)}",
                 };
             }
             else
