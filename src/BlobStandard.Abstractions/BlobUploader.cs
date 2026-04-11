@@ -30,5 +30,11 @@ public abstract class BlobUploader
         Writer = writer;
     }
 
-    // TODO: Add Cancel method.
+    /// <summary>
+    /// Cancels the upload operation.
+    /// </summary>
+    /// <remarks>
+    /// This method must be called before completing <see cref="Writer"/>.
+    /// </remarks>
+    public abstract void Cancel();
 }

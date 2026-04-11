@@ -160,15 +160,24 @@ public partial class FileSystemBackend : IStorageBackend
 
     private sealed class FileSystemBlobUploader : BlobUploader
     {
-        private FileSystemBlobUploader(PipeWriter writer) : base(writer) { }
+        private readonly Pipe _pipe;
+
+        private readonly CancellationTokenSource _cancellationTokenSource;
+
+        private FileSystemBlobUploader(Pipe pipe, CancellationTokenSource cts) : base(pipe.Writer)
+        {
+            _pipe = pipe;
+            _cancellationTokenSource = cts;
+        }
 
         public static FileSystemBlobUploader Create(string blobName, UploadBlobOptions? options)
         {
             var pipe = new Pipe();
+            var cts = new CancellationTokenSource();
             _ = options?.AllowPartialReads ?? false
-                ? WriteDirectAsync(pipe.Reader, blobName, options)
-                : WriteAtomicAsync(pipe.Reader, blobName, options);
-            return new FileSystemBlobUploader(pipe.Writer);
+                ? WriteDirectAsync(pipe.Reader, blobName, options, cts.Token)
+                : WriteAtomicAsync(pipe.Reader, blobName, options, cts.Token);
+            return new FileSystemBlobUploader(pipe, cts);
         }
 
         private static void DeleteTemporaryFile(string tempPath)
@@ -185,15 +194,15 @@ public partial class FileSystemBackend : IStorageBackend
 
         // TODO: Directly write to SafeFileHandle.
 
-        private static async Task WriteDirectAsync(PipeReader reader, string blobName, UploadBlobOptions options)
+        private static async Task WriteDirectAsync(PipeReader reader, string blobName, UploadBlobOptions options, CancellationToken cancellationToken)
         {
             var fileMode = options.FailIfExists ? FileMode.CreateNew : FileMode.Create;
             bool committed = false;
             try
             {
                 await using var fs = new FileStream(blobName, fileMode, FileAccess.Write, FileShare.Read, 1, FileOptions.Asynchronous);
-                await reader.CopyToAsync(fs);
-                await fs.FlushAsync();
+                await reader.CopyToAsync(fs, cancellationToken);
+                await fs.FlushAsync(cancellationToken);
                 committed = true;
             }
             catch (Exception e)
@@ -207,7 +216,7 @@ public partial class FileSystemBackend : IStorageBackend
             }
         }
 
-        private static async Task WriteAtomicAsync(PipeReader reader, string blobName, UploadBlobOptions? options)
+        private static async Task WriteAtomicAsync(PipeReader reader, string blobName, UploadBlobOptions? options, CancellationToken cancellationToken)
         {
             string tempPath = blobName + "." + Guid.NewGuid().ToString("N") + ".tmp";
             bool committed = false;
@@ -215,8 +224,8 @@ public partial class FileSystemBackend : IStorageBackend
             {
                 await using (var fs = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.Asynchronous))
                 {
-                    await reader.CopyToAsync(fs);
-                    await fs.FlushAsync();
+                    await reader.CopyToAsync(fs, cancellationToken);
+                    await fs.FlushAsync(cancellationToken);
                 }
                 File.Move(tempPath, blobName, overwrite: !(options?.FailIfExists ?? false));
                 committed = true;
@@ -230,6 +239,11 @@ public partial class FileSystemBackend : IStorageBackend
             {
                 await reader.CompleteAsync();
             }
+        }
+
+        public override void Cancel()
+        {
+            _cancellationTokenSource.Cancel();
         }
     }
 }
