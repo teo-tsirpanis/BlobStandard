@@ -117,8 +117,15 @@ public partial class FileSystemBackend
 
         protected override bool ShouldIncludeEntry(ref FileSystemEntry entry)
         {
-            // Do not include directories when recursing, for compatibility with object storage listing.
-            return !(recurse && entry.IsDirectory);
+            if (entry.IsDirectory)
+            {
+                // Do not include directories when recursing, for compatibility with object storage listing.
+                return !recurse;
+            }
+            else
+            {
+                return !entry.FileName.EndsWith(BackendUtilities.TempBlobSuffix, StringComparison.Ordinal);
+            }
         }
     }
 }

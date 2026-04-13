@@ -26,9 +26,7 @@ public partial class FileSystemBackend : IStorageBackend
 
     private static void ValidateBlobName(string blobName)
     {
-        ArgumentException.ThrowIfNullOrEmpty(blobName);
-        // TODO: Prohibit names that end with the reserved temporary blob suffix.
-        // We might need to put this check in a more provider-agnostic place.
+        BackendUtilities.ValidateBlobName(blobName);
     }
 
     private static void ValidatePrefix(string prefix)

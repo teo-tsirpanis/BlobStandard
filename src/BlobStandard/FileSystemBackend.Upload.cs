@@ -5,13 +5,14 @@ using System.Buffers;
 using System.Diagnostics;
 using System.IO.Pipelines;
 using BlobStandard.Models;
+using BlobStandard.Utilities;
 using Microsoft.Win32.SafeHandles;
 
 namespace BlobStandard;
 
 public partial class FileSystemBackend
 {
-    private static string GenerateTempFileName(string blobName) => $"{blobName}.{Guid.NewGuid():N}.tmp";
+    private static string GenerateTempFileName(string blobName) => $"{blobName}.{Guid.NewGuid():N}{BackendUtilities.TempBlobSuffix}";
 
     private sealed class Uploader : DefaultUploader
     {
