@@ -73,7 +73,7 @@ public partial class FileSystemBackend
             if (buffer.IsSingleSegment)
             {
                 var first = buffer.First;
-                await RandomAccess.WriteAsync(_handle, first, _offset, cancellationToken);
+                await RandomAccess.WriteAsync(_handle, first, _offset, cancellationToken).ConfigureAwait(false);
                 _offset += first.Length;
             }
             else
@@ -84,7 +84,7 @@ public partial class FileSystemBackend
                 {
                     buffers.Add(segment);
                 }
-                await RandomAccess.WriteAsync(_handle, buffers, _offset, cancellationToken);
+                await RandomAccess.WriteAsync(_handle, buffers, _offset, cancellationToken).ConfigureAwait(false);
                 buffers.Clear();
                 _offset += buffer.Length;
             }

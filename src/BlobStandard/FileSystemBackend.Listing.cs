@@ -54,7 +54,7 @@ public partial class FileSystemBackend
                     while (enumerator.MoveNext() && !stop.ShouldStop)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        await writer.WriteAsync(enumerator.Current, cancellationToken);
+                        await writer.WriteAsync(enumerator.Current, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 finally
