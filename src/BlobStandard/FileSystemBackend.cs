@@ -143,6 +143,38 @@ public partial class FileSystemBackend : IStorageBackend
     }
 
     /// <inheritdoc/>
+    public async Task UploadBlobAsync(string bucketName, string blobName, Stream content, UploadBlobOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ValidateBucket(bucketName);
+        ValidateBlobName(blobName);
+        ArgumentNullException.ThrowIfNull(content);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string? directory = Path.GetDirectoryName(blobName);
+        if (directory is { Length: > 0 })
+            Directory.CreateDirectory(directory);
+
+        var strategy = new UploaderStrategy(blobName, options);
+        await strategy.RunAsync(content, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task UploadBlobAsync(string bucketName, string blobName, PipeReader content, UploadBlobOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ValidateBucket(bucketName);
+        ValidateBlobName(blobName);
+        ArgumentNullException.ThrowIfNull(content);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string? directory = Path.GetDirectoryName(blobName);
+        if (directory is { Length: > 0 })
+            Directory.CreateDirectory(directory);
+
+        var strategy = new UploaderStrategy(blobName, options);
+        await strategy.RunAsync(content, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task<BlobUploader> StartUploadBlobAsync(string bucketName, string blobName, UploadBlobOptions? options = null, CancellationToken cancellationToken = default)
     {
         ValidateBucket(bucketName);

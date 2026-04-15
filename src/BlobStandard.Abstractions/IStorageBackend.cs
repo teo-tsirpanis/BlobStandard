@@ -1,6 +1,7 @@
 // Copyright © Theodore Tsirpanis and Contributors.
 // SPDX-License-Identifier: MIT
 
+using System.IO.Pipelines;
 using BlobStandard.Models;
 
 namespace BlobStandard;
@@ -111,6 +112,51 @@ public interface IStorageBackend
     /// You must use instances returned by this method only with the same storage backend.
     /// </remarks>
     UploadBlobOptions CreateUploadBlobOptions() => new();
+
+    /// <summary>
+    /// Uploads a new blob to a bucket.
+    /// </summary>
+    /// <param name="bucketName">The name of the destination bucket.</param>
+    /// <param name="blobName">The name to assign to the uploaded blob.</param>
+    /// <param name="content">A <see cref="Stream"/> containing the blob's content. The stream will be read until completion.</param>
+    /// <param name="options">Optional upload options. If <see langword="null"/>, defaults are used.</param>
+    /// <param name="cancellationToken">Used to cancel the operation.</param>
+    /// <remarks>
+    /// This method might be more efficient than <see cref="StartUploadBlobAsync"/> for some backends.
+    /// Further efficiency improvements might be possible if <paramref name="content"/> is seekable.
+    /// </remarks>
+    async Task UploadBlobAsync(string bucketName, string blobName, Stream content, UploadBlobOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        await UploadBlobAsync(bucketName, blobName, PipeReader.Create(content), options, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Uploads a new blob to a bucket.
+    /// </summary>
+    /// <param name="bucketName">The name of the destination bucket.</param>
+    /// <param name="blobName">The name to assign to the uploaded blob.</param>
+    /// <param name="content">A <see cref="PipeReader"/> containing the blob's content. The reader will be read until completion.</param>
+    /// <param name="options">Optional upload options. If <see langword="null"/>, defaults are used.</param>
+    /// <param name="cancellationToken">Used to cancel the operation.</param>
+    /// <remarks>
+    /// This method might be more efficient than <see cref="StartUploadBlobAsync"/> for some backends.
+    /// </remarks>
+    async Task UploadBlobAsync(string bucketName, string blobName, PipeReader content, UploadBlobOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var uploader = await StartUploadBlobAsync(bucketName, blobName, options, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await content.CopyToAsync(uploader.Writer, cancellationToken).ConfigureAwait(false);
+            await uploader.Writer.CompleteAsync().ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            await uploader.Writer.CompleteAsync(e).ConfigureAwait(false);
+            throw;
+        }
+    }
 
     /// <summary>
     /// Begins an upload of a new blob to a bucket.

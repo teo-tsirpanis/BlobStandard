@@ -86,13 +86,18 @@ public partial class FileSystemBackend
 
             if (isFinal)
             {
-                // There's unfortunately no async version of FlushToDisk.
-                RandomAccess.FlushToDisk(_handle);
-                if (_finalDestinationName is not null)
-                {
-                    _handle.Dispose();
-                    File.Move(_blobName, _finalDestinationName, overwrite: !_failIfExists);
-                }
+                Commit();
+            }
+        }
+
+        private void Commit()
+        {
+            // There's unfortunately no async version of FlushToDisk.
+            RandomAccess.FlushToDisk(_handle);
+            if (_finalDestinationName is not null)
+            {
+                _handle.Dispose();
+                File.Move(_blobName, _finalDestinationName, overwrite: !_failIfExists);
             }
         }
 
@@ -115,6 +120,79 @@ public partial class FileSystemBackend
             // The handle might have been disposed already, but that's fine since
             // disposing is idempotent.
             _handle.Dispose();
+        }
+
+        // Copied from https://github.com/dotnet/runtime/blob/25e2d7f/src/libraries/System.Private.CoreLib/src/System/IO/Stream.cs#L118-L154
+        private static int GetCopyBufferSize(Stream stream)
+        {
+            const int DefaultCopyBufferSize = 81920;
+
+            int bufferSize = DefaultCopyBufferSize;
+
+            if (stream.CanSeek)
+            {
+                long length = stream.Length;
+                long position = stream.Position;
+                if (length <= position) // Handles negative overflows
+                {
+                    // There are no bytes left in the stream to copy.
+                    // However, because CopyTo{Async} is virtual, we need to
+                    // ensure that any override is still invoked to provide its
+                    // own validation, so we use the smallest legal buffer size here.
+                    bufferSize = 1;
+                }
+                else
+                {
+                    long remaining = length - position;
+                    if (remaining > 0)
+                    {
+                        // In the case of a positive overflow, stick to the default size
+                        bufferSize = (int)Math.Min(bufferSize, remaining);
+                    }
+                }
+            }
+
+            return bufferSize;
+        }
+
+        private async ValueTask WriteStreamAsync(Stream stream, CancellationToken cancellationToken)
+        {
+            var buffer = ArrayPool<byte>.Shared.Rent(GetCopyBufferSize(stream));
+            try
+            {
+                while (true)
+                {
+                    int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                    if (bytesRead == 0)
+                    {
+                        break;
+                    }
+                    await RandomAccess.WriteAsync(_handle, new ReadOnlyMemory<byte>(buffer, 0, bytesRead), _offset, cancellationToken).ConfigureAwait(false);
+                    _offset += bytesRead;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+
+        public async Task RunAsync(Stream stream, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await WriteStreamAsync(stream, cancellationToken).ConfigureAwait(false);
+                Commit();
+            }
+            catch
+            {
+                await AbortAsync().ConfigureAwait(false);
+                throw;
+            }
+            finally
+            {
+                Dispose();
+            }
         }
     }
 }
