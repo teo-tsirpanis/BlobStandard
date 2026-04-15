@@ -14,7 +14,7 @@ public partial class FileSystemBackend
 {
     private static string GenerateTempFileName(string blobName) => $"{blobName}.{Guid.NewGuid():N}{BackendUtilities.TempBlobSuffix}";
 
-    private sealed class Uploader : DefaultUploader
+    private sealed class UploaderStrategy : BlobUploaderStrategy
     {
         /// <summary>
         /// The name of the file to which data is currently being written.
@@ -44,8 +44,7 @@ public partial class FileSystemBackend
         /// </summary>
         private List<ReadOnlyMemory<byte>>? _buffers;
 
-        private Uploader(string blobName, bool isAtomicWrite, bool failIfExists)
-            : base(new Pipe())
+        private UploaderStrategy(string blobName, bool isAtomicWrite, bool failIfExists)
         {
             var fileMode = (isAtomicWrite, failIfExists) switch
             {
@@ -59,13 +58,9 @@ public partial class FileSystemBackend
             _handle = File.OpenHandle(_blobName, fileMode, FileAccess.Write, fileShare, FileOptions.Asynchronous);
         }
 
-        public static Uploader Create(string blobName, UploadBlobOptions? options)
+        public UploaderStrategy(string blobName, UploadBlobOptions? options)
+            : this(blobName, options?.AllowPartialReads == false, options?.FailIfExists == true)
         {
-            bool allowPartialReads = options?.AllowPartialReads ?? false;
-            bool failIfExists = options?.FailIfExists ?? false;
-            var uploader = new Uploader(blobName, !allowPartialReads, failIfExists);
-            uploader.Start();
-            return uploader;
         }
 
         protected override async ValueTask WriteBufferAsync(ReadOnlySequence<byte> buffer, bool isFinal, CancellationToken cancellationToken)

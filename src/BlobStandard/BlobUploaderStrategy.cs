@@ -2,16 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 using System.Buffers;
-using System.Diagnostics;
 using System.IO.Pipelines;
 
 namespace BlobStandard;
 
 /// <summary>
-/// Provides a standardized pattern to implement <see cref="BlobUploader"/>s that are serviced
-/// by a loop running in the background.
+/// Provides a standardized pattern to implement <see cref="BlobUploader"/>s.
 /// </summary>
-/// <param name="pipe">The <see cref="Pipe"/> used for reading and writing data.</param>
 /// <remarks>
 /// The loop will read data written to the <see cref="BlobUploader.Writer"/>, and call the following methods in order:
 /// <list type="number">
@@ -21,35 +18,8 @@ namespace BlobStandard;
 /// <item><description>Finally, one call to <see cref="Dispose"/>.</description></item>
 /// </list>
 /// </remarks>
-internal abstract class DefaultUploader(Pipe pipe) : BlobUploader(pipe.Writer)
+internal abstract class BlobUploaderStrategy
 {
-    private readonly PipeReader _reader = pipe.Reader;
-
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
-
-#if DEBUG
-    private bool _started;
-#endif
-
-    /// <summary>
-    /// Starts the upload loop. This method must be called once after the object is constructed.
-    /// </summary>
-    protected void Start()
-    {
-#if DEBUG
-        Debug.Assert(!_started, "Start should only be called once.");
-        _started = true;
-#endif
-        _ = UploadLoop(_cancellationTokenSource.Token);
-    }
-
-    /// <inheritdoc/>
-    public sealed override void Cancel()
-    {
-        _reader.CancelPendingRead();
-        _cancellationTokenSource.Cancel();
-    }
-
     /// <summary>
     /// Gets called to write a buffer of data to the blob.
     /// </summary>
@@ -69,7 +39,7 @@ internal abstract class DefaultUploader(Pipe pipe) : BlobUploader(pipe.Writer)
 
     /// <summary>
     /// Gets called when the upload operation is aborted, either due to an exception,
-    /// or because <see cref="Cancel"/> was called.
+    /// or because the upload was canceled.
     /// </summary>
     protected abstract ValueTask AbortAsync();
 
@@ -79,7 +49,7 @@ internal abstract class DefaultUploader(Pipe pipe) : BlobUploader(pipe.Writer)
     /// </summary>
     protected virtual void Dispose() { }
 
-    private async Task UploadLoop(CancellationToken cancellationToken)
+    public async Task RunAsync(PipeReader reader, CancellationToken cancellationToken)
     {
         try
         {
@@ -88,7 +58,7 @@ internal abstract class DefaultUploader(Pipe pipe) : BlobUploader(pipe.Writer)
             {
                 // Don't pass the cancellation token here; we rely on CancelPendingRead to cancel while
                 // waiting for more data, without throwing an exception.
-                ReadResult readResult = await _reader.ReadAsync(CancellationToken.None).ConfigureAwait(false);
+                ReadResult readResult = await reader.ReadAsync(CancellationToken.None).ConfigureAwait(false);
                 try
                 {
                     if (readResult.IsCanceled)
@@ -104,24 +74,24 @@ internal abstract class DefaultUploader(Pipe pipe) : BlobUploader(pipe.Writer)
                 }
                 finally
                 {
-                    _reader.AdvanceTo(readResult.Buffer.End);
+                    reader.AdvanceTo(readResult.Buffer.End);
                 }
             }
 
             if (isCanceled)
             {
                 await AbortAsync().ConfigureAwait(false);
-                await _reader.CompleteAsync(new OperationCanceledException()).ConfigureAwait(false);
+                await reader.CompleteAsync(new OperationCanceledException()).ConfigureAwait(false);
             }
             else
             {
-                await _reader.CompleteAsync().ConfigureAwait(false);
+                await reader.CompleteAsync().ConfigureAwait(false);
             }
         }
         catch (Exception e)
         {
             await AbortAsync().ConfigureAwait(false);
-            await _reader.CompleteAsync(e).ConfigureAwait(false);
+            await reader.CompleteAsync(e).ConfigureAwait(false);
         }
         finally
         {

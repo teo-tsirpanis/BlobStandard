@@ -153,6 +153,6 @@ public partial class FileSystemBackend : IStorageBackend
         if (directory is { Length: > 0 })
             Directory.CreateDirectory(directory);
 
-        return Uploader.Create(blobName, options);
+        return new StrategyBasedUploader(new Pipe(), new UploaderStrategy(blobName, options));
     }
 }
