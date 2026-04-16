@@ -18,7 +18,9 @@ internal sealed class StrategyBasedUploader : BlobUploader
     public StrategyBasedUploader(Pipe pipe, BlobUploaderStrategy strategy) : base(pipe.Writer)
     {
         _reader = pipe.Reader;
-        _ = strategy.RunAsync(pipe.Reader, _cancellationTokenSource.Token);
+        // Don't use the cancellation token for reads; we rely on CancelPendingRead to cancel while
+        // waiting for more data, without throwing an exception.
+        _ = strategy.RunAsync(pipe.Reader, CancellationToken.None, _cancellationTokenSource.Token);
     }
 
     /// <inheritdoc/>

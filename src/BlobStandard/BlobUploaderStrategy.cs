@@ -49,16 +49,19 @@ internal abstract class BlobUploaderStrategy
     /// </summary>
     protected virtual void Dispose() { }
 
-    public async Task RunAsync(PipeReader reader, CancellationToken cancellationToken)
+    public Task RunAsync(PipeReader reader, CancellationToken cancellationToken = default)
+    {
+        return RunAsync(reader, cancellationToken, cancellationToken);
+    }
+
+    public async Task RunAsync(PipeReader reader, CancellationToken cancellationTokenForRead, CancellationToken cancellationTokenForWrite)
     {
         try
         {
             bool isCanceled = false;
             while (true)
             {
-                // Don't pass the cancellation token here; we rely on CancelPendingRead to cancel while
-                // waiting for more data, without throwing an exception.
-                ReadResult readResult = await reader.ReadAsync(CancellationToken.None).ConfigureAwait(false);
+                ReadResult readResult = await reader.ReadAsync(cancellationTokenForRead).ConfigureAwait(false);
                 try
                 {
                     if (readResult.IsCanceled)
@@ -66,7 +69,7 @@ internal abstract class BlobUploaderStrategy
                         isCanceled = true;
                         break;
                     }
-                    await WriteBufferAsync(readResult.Buffer, readResult.IsCompleted, cancellationToken).ConfigureAwait(false);
+                    await WriteBufferAsync(readResult.Buffer, readResult.IsCompleted, cancellationTokenForWrite).ConfigureAwait(false);
                     if (readResult.IsCompleted)
                     {
                         break;
