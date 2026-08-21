@@ -50,6 +50,7 @@ public partial class FileSystemBackend : IStorageBackend
     {
         ValidateBucket(bucketName);
         ValidateBlobName(blobName);
+        BackendUtilities.ValidateOptions<DownloadBlobOptions, DownloadBlobOptions>(options, nameof(IStorageBackend.CreateDownloadBlobOptions));
         long rangeStart = options?.RangeStart ?? 0;
         ArgumentOutOfRangeException.ThrowIfNegative(rangeStart, nameof(options.RangeStart));
         if (options?.RangeCount is { } rc)
@@ -91,6 +92,7 @@ public partial class FileSystemBackend : IStorageBackend
     {
         ValidateBucket(bucketName);
         ValidateBlobName(blobName);
+        BackendUtilities.ValidateOptions<GetBlobDetailsOptions, GetBlobDetailsOptions>(options, nameof(IStorageBackend.CreateGetBlobDetailsOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -109,6 +111,7 @@ public partial class FileSystemBackend : IStorageBackend
     {
         ValidateBucket(bucketName);
         ValidateBlobName(blobName);
+        BackendUtilities.ValidateOptions<DeleteBlobOptions, DeleteBlobOptions>(options, nameof(IStorageBackend.CreateDeleteBlobOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         try
@@ -127,6 +130,7 @@ public partial class FileSystemBackend : IStorageBackend
     {
         ValidateBucket(bucketName);
         ValidatePrefix(prefix);
+        BackendUtilities.ValidateOptions<ListBlobsOptions, ListBlobsOptions>(options, nameof(IStorageBackend.CreateListBlobsOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         return ListBlobsInternal(prefix, recurse: true).Cast<ListItemBlob>();
@@ -137,6 +141,7 @@ public partial class FileSystemBackend : IStorageBackend
     {
         ValidateBucket(bucketName);
         ValidatePrefix(prefix);
+        BackendUtilities.ValidateOptions<ListBlobsOptions, ListBlobsOptions>(options, nameof(IStorageBackend.CreateListBlobsOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         return ListBlobsInternal(prefix, recurse: false);
@@ -148,6 +153,7 @@ public partial class FileSystemBackend : IStorageBackend
         ValidateBucket(bucketName);
         ValidateBlobName(blobName);
         ArgumentNullException.ThrowIfNull(content);
+        BackendUtilities.ValidateOptions<UploadBlobOptions, UploadBlobOptions>(options, nameof(IStorageBackend.CreateUploadBlobOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         string? directory = Path.GetDirectoryName(blobName);
@@ -164,6 +170,7 @@ public partial class FileSystemBackend : IStorageBackend
         ValidateBucket(bucketName);
         ValidateBlobName(blobName);
         ArgumentNullException.ThrowIfNull(content);
+        BackendUtilities.ValidateOptions<UploadBlobOptions, UploadBlobOptions>(options, nameof(IStorageBackend.CreateUploadBlobOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         string? directory = Path.GetDirectoryName(blobName);
@@ -179,6 +186,7 @@ public partial class FileSystemBackend : IStorageBackend
     {
         ValidateBucket(bucketName);
         ValidateBlobName(blobName);
+        BackendUtilities.ValidateOptions<UploadBlobOptions, UploadBlobOptions>(options, nameof(IStorageBackend.CreateUploadBlobOptions));
         cancellationToken.ThrowIfCancellationRequested();
 
         string? directory = Path.GetDirectoryName(blobName);

@@ -1,6 +1,8 @@
 // Copyright © Theodore Tsirpanis and Contributors.
 // SPDX-License-Identifier: MIT
 
+using System.Runtime.CompilerServices;
+
 namespace BlobStandard.Utilities;
 
 internal static class BackendUtilities
@@ -63,6 +65,18 @@ internal static class BackendUtilities
 
             return bufferSize;
         }
+    }
 
+    public static TDerived? ValidateOptions<T, TDerived>(T? options, string getOptionsMethodName, [CallerArgumentExpression(nameof(options))] string? parameterName = null)
+        where T : class
+        where TDerived : class, T
+    {
+        return options switch
+        {
+            null => null,
+            TDerived derivedOptions => derivedOptions,
+            T when options.GetType() == typeof(T) => null,
+            _ => throw new ArgumentException($"Unsupported options object type. Call {getOptionsMethodName} to create an instance of the expected type.", parameterName),
+        };
     }
 }
